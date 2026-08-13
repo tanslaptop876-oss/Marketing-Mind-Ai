@@ -1,0 +1,1 @@
+export default function Campaigns() { return <><h1>Publishing & scheduling</h1><p className="muted">The queue model and connector contract are ready for a background publishing worker.</p><div className="card section"><h2>Campaign queue</h2><div className="empty">Connect a publishing channel to create your first scheduled post.</div></div></> }
