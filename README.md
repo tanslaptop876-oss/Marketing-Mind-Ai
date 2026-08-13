@@ -1,4 +1,3 @@
-
 # MarketingMind AI â€” MVP
 
 A practical marketing operations dashboard for small teams: authenticated website management, SEO audit history and checkpoint comparisons, CRM with buyer personas, profitability planning, plus a connector-ready publishing architecture.
@@ -22,6 +21,8 @@ A practical marketing operations dashboard for small teams: authenticated websit
 - Typed adapter catalog for Meta, Google Business Profile, GA4, GSC, Semrush, Ahrefs, WordPress, Shopify, YouTube, LinkedIn and X
 
 Provider OAuth and automated audits/publishing are intentionally adapters for the next iteration: those APIs require provider apps, reviews and credentials that cannot be bundled into a repository.
+
+Google Search Console OAuth and 28-day reporting are implemented. Add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and a 32-byte base64 `CONNECTOR_ENCRYPTION_KEY` in Vercel, then register `/api/connectors/gsc/callback` as the Google OAuth redirect URI.
 
 ## Quick setup (no local Supabase required)
 
@@ -82,3 +83,4 @@ Recommended order: Google Business Profile + Meta publishing, GSC + GA4 reportin
 3. Add an automated crawler/Lighthouse worker for SEO audits.
 4. Persist finance scenarios and add channel-attributed campaign costs/revenue.
 5. Add CSV contact import and a kanban lead pipeline.
+
