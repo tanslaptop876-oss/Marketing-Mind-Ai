@@ -1,0 +1,3 @@
+"use server";
+import { revalidatePath } from "next/cache"; import { createClient } from "@/lib/supabase/server";
+export async function addAudit(data:FormData){const s=await createClient();const {data:{user}}=await s.auth.getUser();if(!user)return;await s.from("audit_runs").insert({owner_id:user.id,website_id:String(data.get("website_id")),score:Number(data.get("score")),technical_score:Number(data.get("technical_score")),content_score:Number(data.get("content_score")),performance_score:Number(data.get("performance_score")),issues_count:Number(data.get("issues_count")),summary:String(data.get("summary")||"")});revalidatePath("/seo-audits")}

@@ -1,0 +1,2 @@
+import { connectorCatalog } from "@/lib/connectors/registry";
+export default function Connectors() { return <><h1>Connectors</h1><p className="muted">Adapters are defined; enable credentials and OAuth one provider at a time.</p><div className="grid section">{Object.entries(connectorCatalog).map(([key,c])=><div className="card" key={key}><h2>{c.name}</h2><p>{c.capabilities.map(x=><span className="badge" key={x} style={{marginRight:5}}>{x}</span>)}</p><span className="muted">Adapter ready · authorization pending</span></div>)}</div></> }

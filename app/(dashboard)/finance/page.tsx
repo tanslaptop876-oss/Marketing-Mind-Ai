@@ -1,0 +1,1 @@
+import Calculator from "./calculator";export default function Finance(){return <><h1>Break-even & profitability</h1><p className="muted">Test pricing, cost, and sales assumptions instantly. Values use your preferred currency.</p><Calculator/></>}

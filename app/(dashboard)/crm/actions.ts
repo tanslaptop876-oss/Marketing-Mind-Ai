@@ -1,0 +1,3 @@
+"use server";
+import { revalidatePath } from "next/cache";import { createClient } from "@/lib/supabase/server";
+export async function addContact(f:FormData){const s=await createClient();const {data:{user}}=await s.auth.getUser();if(!user)return;const {data:c}=await s.from("contacts").insert({owner_id:user.id,name:String(f.get("name")),email:String(f.get("email")||""),company:String(f.get("company")||""),persona:String(f.get("persona")||"")}).select("id").single();if(c)await s.from("leads").insert({owner_id:user.id,contact_id:c.id,status:String(f.get("status")),value:Number(f.get("value")||0)});revalidatePath("/crm")}

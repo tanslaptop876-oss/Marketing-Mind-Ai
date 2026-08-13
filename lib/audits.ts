@@ -1,0 +1,2 @@
+export type Audit={id:string;website_id:string;score:number;created_at:string;websites?:{name:string}|null};
+export function comparisonScore(audits:Audit[],days:number){const now=Date.now();const target=now-days*86400000;const eligible=audits.filter(a=>new Date(a.created_at).getTime()<=target).sort((a,b)=>Math.abs(new Date(a.created_at).getTime()-target)-Math.abs(new Date(b.created_at).getTime()-target));return eligible[0]?.score??null;}
