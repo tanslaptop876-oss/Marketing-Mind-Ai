@@ -34,7 +34,7 @@ async function assertPublicUrl(input: string) {
 
 async function safeFetch(input: string, init: RequestInit = {}, redirects = 0): Promise<Response> {
   const url = await assertPublicUrl(input);
-  const response = await fetch(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(12_000), headers: { "user-agent": "MarketingMindAI-SEO-Audit/1.0", ...init.headers } });
+  const response = await fetch(url, { ...init, cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(12_000), headers: { "user-agent": "MarketingMindAI-SEO-Audit/1.0", ...init.headers } });
   if ([301, 302, 303, 307, 308].includes(response.status)) {
     if (redirects >= 3) throw new Error("Too many redirects.");
     const location = response.headers.get("location");
@@ -76,7 +76,7 @@ export async function scanWebsite(input: string): Promise<SeoScan> {
     { key: "https", label: "HTTPS", passed: requested.protocol === "https:", detail: requested.protocol === "https:" ? "Secure connection" : "Switch the site to HTTPS", weight: 12 },
     { key: "status", label: "Page status", passed: response.status === 200, detail: `HTTP ${response.status}`, weight: 10 },
     { key: "title", label: "Page title", passed: title.length >= 10 && title.length <= 60, detail: title ? `${title.length} characters` : "Missing title", weight: 14 },
-    { key: "description", label: "Meta description", passed: description.length >= 50 && description.length <= 160, detail: description ? `${description.length} characters` : "Missing description", weight: 14 },
+    { key: "description", label: "Meta description", passed: description.length >= 40 && description.length <= 160, detail: description ? `${description.length} characters` : "Missing description", weight: 14 },
     { key: "h1", label: "Single H1", passed: h1Count === 1, detail: `${h1Count} H1 heading(s)`, weight: 10 },
     { key: "canonical", label: "Canonical URL", passed: canonical, detail: canonical ? "Canonical tag found" : "Missing canonical tag", weight: 8 },
     { key: "viewport", label: "Mobile viewport", passed: viewport, detail: viewport ? "Viewport configured" : "Missing viewport tag", weight: 8 },
