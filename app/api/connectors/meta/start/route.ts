@@ -1,0 +1,3 @@
+import{NextResponse}from"next/server";import{createClient}from"@/lib/supabase/server";import{createOAuthState,metaAuthorizationUrl,metaConfigured}from"@/lib/connectors/meta";
+export const runtime="nodejs";export async function GET(){const s=await createClient(),{data:{user}}=await s.auth.getUser();if(!user)return NextResponse.redirect(new URL("/login",process.env.NEXT_PUBLIC_APP_URL));if(!metaConfigured())return NextResponse.redirect(new URL("/connectors?error=Meta%20OAuth%20is%20not%20configured",process.env.NEXT_PUBLIC_APP_URL));return NextResponse.redirect(metaAuthorizationUrl(createOAuthState(user.id)))}
+
