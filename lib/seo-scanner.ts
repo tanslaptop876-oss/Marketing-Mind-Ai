@@ -1,3 +1,6 @@
+Exit code: 0
+Wall time: 1.2 seconds
+Output:
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
@@ -50,7 +53,18 @@ const content = (html: string, pattern: RegExp) => html.match(pattern)?.[1]?.rep
 export async function scanWebsite(input: string): Promise<SeoScan> {
   const started = Date.now();
   const requested = await assertPublicUrl(input);
-  const response = await safeFetch(requested.toString(), { headers: { accept: "text/html,application/xhtml+xml" } });
+  // A unique, harmless query value avoids stale CDN HTML after a site owner
+  // updates titles or descriptions. Keep `requested` unchanged for reporting
+  // and for robots/sitemap checks.
+  const scanUrl = new URL(requested);
+  scanUrl.searchParams.set("mm_scan", Date.now().toString());
+  const response = await safeFetch(scanUrl.toString(), {
+    headers: {
+      accept: "text/html,application/xhtml+xml",
+      "cache-control": "no-cache",
+      pragma: "no-cache",
+    },
+  });
   if (!response.ok) throw new Error(`Website returned HTTP ${response.status}.`);
   const type = response.headers.get("content-type") ?? "";
   if (!type.includes("text/html")) throw new Error("The URL did not return an HTML page.");
