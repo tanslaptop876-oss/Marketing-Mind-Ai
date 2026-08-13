@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1.2 seconds
-Output:
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
