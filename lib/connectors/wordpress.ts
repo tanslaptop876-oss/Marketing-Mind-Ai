@@ -89,7 +89,7 @@ function wordpressApi(siteIdOrUrl: string, credentials: StoredWordPressCredentia
   return { baseUrl, authorization };
 }
 
-export async function uploadWordPressMedia(siteIdOrUrl: string, credentials: StoredWordPressCredentials, bytes: Uint8Array, mimeType: string, filename: string) {
+export async function uploadWordPressMedia(siteIdOrUrl: string, credentials: StoredWordPressCredentials, bytes: ArrayBuffer, mimeType: string, filename: string) {
   const { baseUrl, authorization } = wordpressApi(siteIdOrUrl, credentials);
   const safeFilename = filename.replace(/[^a-z0-9._-]/gi, "-").slice(-120) || "campaign-image.jpg";
   const response = await fetch(`${baseUrl}/media`, { method: "POST", headers: { authorization, "content-type": mimeType, "content-disposition": `attachment; filename="${safeFilename}"` }, body: bytes, cache: "no-store" });
