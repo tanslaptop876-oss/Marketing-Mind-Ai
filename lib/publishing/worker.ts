@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptPageCredentials, publishMetaPagePost } from "@/lib/connectors/meta";
 import { decryptTokens } from "@/lib/connectors/google-search-console";
-import { publishWordPressPost, type StoredWordPressCredentials } from "@/lib/connectors/wordpress";
+import { publishWordPressPost, uploadWordPressMedia, type StoredWordPressCredentials } from "@/lib/connectors/wordpress";
 
 type QueuePost = {
   id: string;
@@ -72,8 +72,17 @@ export async function publishDuePosts(limit = 10, ownerId?: string): Promise<Pub
         }
         externalPostId = await publishMetaPagePost(decryptPageCredentials(account.encrypted_credentials), post.content, imageUrl);
       } else if (post.platform === "wordpress") {
-        if (post.media_urls.length) throw new Error("WordPress image publishing is not enabled yet. Remove the image and retry.");
-        externalPostId = await publishWordPressPost(account.external_account_id, decryptTokens<StoredWordPressCredentials>(account.encrypted_credentials), post.content, post.publish_mode);
+        const credentials = decryptTokens<StoredWordPressCredentials>(account.encrypted_credentials);
+        let featuredMedia: number | undefined;
+        if (post.media_urls[0]) {
+          const { data: signed, error: signedError } = await supabase.storage.from("campaign-media").createSignedUrl(post.media_urls[0], 600);
+          if (signedError || !signed?.signedUrl) throw signedError || new Error("Could not prepare campaign media.");
+          const mediaResponse = await fetch(signed.signedUrl, { cache: "no-store" });
+          if (!mediaResponse.ok) throw new Error("Could not download campaign media for WordPress.");
+          const mimeType = mediaResponse.headers.get("content-type") || "image/jpeg";
+          featuredMedia = await uploadWordPressMedia(account.external_account_id, credentials, await mediaResponse.arrayBuffer(), mimeType, post.media_urls[0].split("/").pop() || "campaign-image.jpg");
+        }
+        externalPostId = await publishWordPressPost(account.external_account_id, credentials, post.content, post.publish_mode, featuredMedia);
       } else {
         throw new Error(`${post.platform} publishing is not enabled yet.`);
       }

@@ -78,16 +78,30 @@ export async function validateWordPressConnection(siteUrl: string, credentials: 
   return { userId: String(data.id), displayName: data.name || credentials.username };
 }
 
-export async function publishWordPressPost(siteIdOrUrl: string, credentials: StoredWordPressCredentials, content: string, status: "draft" | "publish") {
-  const title = content.split(/\r?\n/).find(line => line.trim())?.trim().slice(0, 120) || "MarketingMind AI post";
+function wordpressApi(siteIdOrUrl: string, credentials: StoredWordPressCredentials) {
   const isWordPressCom = credentials.mode === "wordpress.com" || Boolean(credentials.access_token && credentials.blog_id);
-  const endpoint = isWordPressCom
-    ? `https://public-api.wordpress.com/wp/v2/sites/${encodeURIComponent(credentials.blog_id || siteIdOrUrl)}/posts`
-    : `${normalizeWordPressUrl(siteIdOrUrl)}/wp-json/wp/v2/posts`;
+  const baseUrl = isWordPressCom
+    ? `https://public-api.wordpress.com/wp/v2/sites/${encodeURIComponent(credentials.blog_id || siteIdOrUrl)}`
+    : `${normalizeWordPressUrl(siteIdOrUrl)}/wp-json/wp/v2`;
   const authorization = isWordPressCom
     ? `Bearer ${credentials.access_token}`
     : `Basic ${Buffer.from(`${credentials.username}:${credentials.applicationPassword}`).toString("base64")}`;
-  const response = await fetch(endpoint, { method: "POST", headers: { authorization, "content-type": "application/json" }, body: JSON.stringify({ title, content, status }), cache: "no-store" });
+  return { baseUrl, authorization };
+}
+
+export async function uploadWordPressMedia(siteIdOrUrl: string, credentials: StoredWordPressCredentials, bytes: ArrayBuffer, mimeType: string, filename: string) {
+  const { baseUrl, authorization } = wordpressApi(siteIdOrUrl, credentials);
+  const safeFilename = filename.replace(/[^a-z0-9._-]/gi, "-").slice(-120) || "campaign-image.jpg";
+  const response = await fetch(`${baseUrl}/media`, { method: "POST", headers: { authorization, "content-type": mimeType, "content-disposition": `attachment; filename="${safeFilename}"` }, body: bytes, cache: "no-store" });
+  const data = await response.json().catch(() => ({})) as { id?: number; message?: string; code?: string };
+  if (!response.ok || !data.id) throw new Error(data.message || data.code || "WordPress media upload failed.");
+  return data.id;
+}
+
+export async function publishWordPressPost(siteIdOrUrl: string, credentials: StoredWordPressCredentials, content: string, status: "draft" | "publish", featuredMedia?: number) {
+  const title = content.split(/\r?\n/).find(line => line.trim())?.trim().slice(0, 120) || "MarketingMind AI post";
+  const { baseUrl, authorization } = wordpressApi(siteIdOrUrl, credentials);
+  const response = await fetch(`${baseUrl}/posts`, { method: "POST", headers: { authorization, "content-type": "application/json" }, body: JSON.stringify({ title, content, status, ...(featuredMedia ? { featured_media: featuredMedia } : {}) }), cache: "no-store" });
   const data = await response.json().catch(() => ({})) as { id?: number; message?: string; code?: string };
   if (!response.ok || !data.id) throw new Error(data.message || data.code || "WordPress publishing failed.");
   return String(data.id);
