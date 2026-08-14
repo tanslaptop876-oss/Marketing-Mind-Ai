@@ -8,6 +8,7 @@ import { normalizeWordPressUrl, validateWordPressConnection } from "@/lib/connec
 
 export async function disconnectGsc(){const supabase=await createClient();await supabase.from("connector_accounts").delete().eq("provider","gsc");revalidatePath("/connectors")}
 export async function disconnectMeta(){const supabase=await createClient();await supabase.from("connector_accounts").delete().eq("provider","meta");revalidatePath("/connectors")}
+export async function disconnectGbp(){const supabase=await createClient();await supabase.from("connector_accounts").delete().eq("provider","google_business_profile");revalidatePath("/connectors")}
 
 export async function connectWordPress(form: FormData) {
   const supabase = await createClient();
