@@ -16,15 +16,19 @@ export function decryptPageCredentials(value: unknown) {
   return decryptTokens(value) as MetaPageCredentials;
 }
 
-export async function publishMetaPagePost(credentials: MetaPageCredentials, content: string) {
+export async function publishMetaPagePost(credentials: MetaPageCredentials, content: string, imageUrl?: string) {
   if (credentials.expires_at && credentials.expires_at <= Date.now()) {
     throw new Error("Meta Page connection expired. Reconnect Meta before publishing.");
   }
 
-  const response = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(credentials.page_id)}/feed`, {
+  const edge = imageUrl ? "photos" : "feed";
+  const body = imageUrl
+    ? new URLSearchParams({ url: imageUrl, caption: content, published: "true", access_token: credentials.access_token })
+    : new URLSearchParams({ message: content, access_token: credentials.access_token });
+  const response = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(credentials.page_id)}/${edge}`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ message: content, access_token: credentials.access_token }),
+    body,
     cache: "no-store",
   });
   const data = await response.json() as { id?: string; error?: { message?: string } };

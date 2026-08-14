@@ -8,6 +8,7 @@ type QueuePost = {
   platform: string;
   connector_account_id: string | null;
   content: string;
+  media_urls: string[];
 };
 
 type ConnectorAccount = {
@@ -33,8 +34,9 @@ async function connectorForPost(post: QueuePost): Promise<ConnectorAccount | nul
 export async function publishDuePosts(limit = 10, ownerId?: string): Promise<PublishRunResult> {
   const supabase = createAdminClient();
   let dueQuery = supabase.from("scheduled_posts")
-    .select("id,owner_id,platform,connector_account_id,content")
+    .select("id,owner_id,platform,connector_account_id,content,media_urls")
     .eq("status", "scheduled")
+    .eq("approval_status", "approved")
     .lte("scheduled_for", new Date().toISOString())
     .order("scheduled_for")
     .limit(limit);
@@ -57,7 +59,13 @@ export async function publishDuePosts(limit = 10, ownerId?: string): Promise<Pub
       if (post.platform !== "meta") throw new Error(`${post.platform} publishing is not enabled yet.`);
       const account = await connectorForPost(post);
       if (!account) throw new Error("No active Meta Page is connected.");
-      const externalPostId = await publishMetaPagePost(decryptPageCredentials(account.encrypted_credentials), post.content);
+      let imageUrl: string | undefined;
+      if (post.media_urls[0]) {
+        const { data: signed, error: signedError } = await supabase.storage.from("campaign-media").createSignedUrl(post.media_urls[0], 600);
+        if (signedError || !signed?.signedUrl) throw signedError || new Error("Could not prepare campaign media.");
+        imageUrl = signed.signedUrl;
+      }
+      const externalPostId = await publishMetaPagePost(decryptPageCredentials(account.encrypted_credentials), post.content, imageUrl);
       const { error: updateError } = await supabase.from("scheduled_posts").update({
         connector_account_id: account.id,
         status: "published",
