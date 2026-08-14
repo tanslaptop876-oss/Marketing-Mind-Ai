@@ -8,18 +8,19 @@ type PersonaOption = { id: string; name: string };
 type PostRow = {
   id: string; platform: string; content: string; scheduled_for: string | null; status: string;
   approval_status: string; media_urls: string[]; connector_account_id: string | null;
-  persona_id: string | null; buyer_personas: { name: string } | null;
+  persona_id: string | null;
   error_message: string | null; created_at: string;
 };
 
 export default async function Campaigns() {
   const supabase = await createClient();
   const { data: posts = [] } = await supabase.from("scheduled_posts")
-    .select("id,platform,content,scheduled_for,status,approval_status,media_urls,connector_account_id,persona_id,buyer_personas(name),error_message,created_at")
+    .select("id,platform,content,scheduled_for,status,approval_status,media_urls,connector_account_id,persona_id,error_message,created_at")
     .order("created_at", { ascending: false });
   const { data: accounts = [] } = await supabase.from("connector_accounts").select("provider").eq("status", "active");
   const { data: personas = [] } = await supabase.from("buyer_personas").select("id,name").eq("status", "active").order("name");
   const connected = new Set(((accounts ?? []) as AccountRow[]).map(account => account.provider));
+  const personaNames = new Map(((personas ?? []) as PersonaOption[]).map(persona => [persona.id, persona.name]));
   const queue = (posts ?? []) as PostRow[];
 
   return <>
@@ -45,7 +46,7 @@ export default async function Campaigns() {
       <div className="topbar"><h2>Campaign queue</h2><form action={runDuePostsNow}><button className="btn secondary">Run due posts now</button></form></div>
       {!queue.length ? <div className="empty">No posts yet. Create your first campaign draft above.</div> : <table><thead><tr><th>Platform</th><th>Target persona</th><th>Content</th><th>Media</th><th>Publish time</th><th>Approval</th><th>Status</th><th></th></tr></thead><tbody>{queue.map(post => <tr key={post.id}>
         <td>{connectorCatalog[post.platform as keyof typeof connectorCatalog]?.name ?? post.platform}</td>
-        <td>{post.buyer_personas?.name ?? "â€”"}</td>
+        <td>{post.persona_id ? personaNames.get(post.persona_id) ?? "Archived persona" : "â€”"}</td>
         <td className="truncate">{post.content}</td>
         <td>{post.media_urls.length ? `${post.media_urls.length} image` : "Text only"}</td>
         <td>{post.scheduled_for ? new Date(post.scheduled_for).toLocaleString() : "Not scheduled"}</td>
