@@ -29,14 +29,14 @@ export default async function Dashboard() {
     <h1>Marketing command center</h1>
     <p className="muted">A live view of growth, content, customers, and profitability.</p>
     <div className="grid section">
-      <div className="card"><span className="muted">Websites</span><div className="metric">{websites.count ?? 0}</div><Link className="small" href="/websites">Manage websites â†’</Link></div>
+      <div className="card"><span className="muted">Websites</span><div className="metric">{websites.count ?? 0}</div><Link className="small" href="/websites">Manage websites</Link></div>
       <div className="card"><span className="muted">Latest SEO score</span><div className="metric">{latestAudit?.score ?? "â€”"}</div><span className="small muted">{latestAudit ? `${latestAudit.issues_count} issues found` : "No audit yet"}</span></div>
-      <div className="card"><span className="muted">CRM contacts</span><div className="metric">{contacts.count ?? 0}</div><Link className="small" href="/crm">Open CRM â†’</Link></div>
+      <div className="card"><span className="muted">CRM contacts</span><div className="metric">{contacts.count ?? 0}</div><Link className="small" href="/crm">Open CRM</Link></div>
       <div className="card"><span className="muted">Open pipeline value</span><div className="metric">{pipelineValue.toLocaleString()}</div><span className="small muted">Won: {wonValue.toLocaleString()}</span></div>
-      <div className="card"><span className="muted">Active personas</span><div className="metric">{personas.count ?? 0}</div><Link className="small" href="/personas">Target audiences â†’</Link></div>
+      <div className="card"><span className="muted">Active personas</span><div className="metric">{personas.count ?? 0}</div><Link className="small" href="/personas">Target audiences</Link></div>
       <div className="card"><span className="muted">Published posts</span><div className="metric">{publishedPosts}</div><span className="small muted">{queuedPosts} currently queued</span></div>
-      <div className="card"><span className="muted">Saved finance scenarios</span><div className="metric">{finance.count ?? 0}</div><Link className="small" href="/finance">Compare profitability â†’</Link></div>
-      <div className="card"><span className="muted">Active connectors</span><div className="metric">{connectors.count ?? 0}</div><Link className="small" href="/connectors">Manage connectors â†’</Link></div>
+      <div className="card"><span className="muted">Saved finance scenarios</span><div className="metric">{finance.count ?? 0}</div><Link className="small" href="/finance">Compare profitability</Link></div>
+      <div className="card"><span className="muted">Active connectors</span><div className="metric">{connectors.count ?? 0}</div><Link className="small" href="/connectors">Manage connectors</Link></div>
     </div>
     <div className="grid two section">
       <div className="card"><h2>Next best actions</h2><div className="checks">
