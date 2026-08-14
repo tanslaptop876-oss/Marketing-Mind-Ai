@@ -80,7 +80,7 @@ export async function publishDuePosts(limit = 10, ownerId?: string): Promise<Pub
           const mediaResponse = await fetch(signed.signedUrl, { cache: "no-store" });
           if (!mediaResponse.ok) throw new Error("Could not download campaign media for WordPress.");
           const mimeType = mediaResponse.headers.get("content-type") || "image/jpeg";
-          featuredMedia = await uploadWordPressMedia(account.external_account_id, credentials, new Uint8Array(await mediaResponse.arrayBuffer()), mimeType, post.media_urls[0].split("/").pop() || "campaign-image.jpg");
+          featuredMedia = await uploadWordPressMedia(account.external_account_id, credentials, await mediaResponse.arrayBuffer(), mimeType, post.media_urls[0].split("/").pop() || "campaign-image.jpg");
         }
         externalPostId = await publishWordPressPost(account.external_account_id, credentials, post.content, post.publish_mode, featuredMedia);
       } else {
