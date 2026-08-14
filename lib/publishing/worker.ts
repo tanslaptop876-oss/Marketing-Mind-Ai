@@ -30,14 +30,16 @@ async function connectorForPost(post: QueuePost): Promise<ConnectorAccount | nul
   return data as ConnectorAccount | null;
 }
 
-export async function publishDuePosts(limit = 10): Promise<PublishRunResult> {
+export async function publishDuePosts(limit = 10, ownerId?: string): Promise<PublishRunResult> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from("scheduled_posts")
+  let dueQuery = supabase.from("scheduled_posts")
     .select("id,owner_id,platform,connector_account_id,content")
     .eq("status", "scheduled")
     .lte("scheduled_for", new Date().toISOString())
     .order("scheduled_for")
     .limit(limit);
+  if (ownerId) dueQuery = dueQuery.eq("owner_id", ownerId);
+  const { data, error } = await dueQuery;
   if (error) throw error;
 
   const result: PublishRunResult = { processed: 0, published: 0, failed: 0 };
