@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { publishDuePosts } from "@/lib/publishing/worker";
 
 const publishingPlatforms = new Set(["meta", "google_business_profile", "wordpress", "youtube", "linkedin", "x"]);
 
@@ -32,6 +33,14 @@ export async function createScheduledPost(form: FormData) {
 export async function deleteScheduledPost(form: FormData) {
   const supabase = await createClient();
   await supabase.from("scheduled_posts").delete().eq("id", String(form.get("id")));
+  revalidatePath("/campaigns");
+}
+
+export async function runDuePostsNow() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await publishDuePosts(10, user.id);
   revalidatePath("/campaigns");
 }
 
