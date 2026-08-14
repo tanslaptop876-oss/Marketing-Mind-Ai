@@ -8,6 +8,7 @@ type PersonaOption = { id: string; name: string };
 type PostRow = {
   id: string; platform: string; content: string; scheduled_for: string | null; status: string;
   approval_status: string; media_urls: string[]; connector_account_id: string | null;
+  publish_mode: "draft" | "publish";
   persona_id: string | null;
   error_message: string | null; created_at: string;
 };
@@ -15,7 +16,7 @@ type PostRow = {
 export default async function Campaigns() {
   const supabase = await createClient();
   const { data: posts = [] } = await supabase.from("scheduled_posts")
-    .select("id,platform,content,scheduled_for,status,approval_status,media_urls,connector_account_id,persona_id,error_message,created_at")
+    .select("id,platform,content,scheduled_for,status,approval_status,media_urls,connector_account_id,persona_id,publish_mode,error_message,created_at")
     .order("created_at", { ascending: false });
   const { data: accounts = [] } = await supabase.from("connector_accounts").select("provider").eq("status", "active");
   const { data: personas = [] } = await supabase.from("buyer_personas").select("id,name").eq("status", "active").order("name");
@@ -31,23 +32,26 @@ export default async function Campaigns() {
         <label>Platform<select name="platform" required>{platforms.map(platform => <option key={platform} value={platform}>{connectorCatalog[platform].name}{connected.has(platform) ? " Â· connected" : " Â· draft only"}</option>)}</select></label>
         <label>Target persona<select name="persona_id"><option value="">No persona selected</option>{((personas ?? []) as PersonaOption[]).map(persona => <option key={persona.id} value={persona.id}>{persona.name}</option>)}</select></label>
         <label>Post content<textarea name="content" rows={7} required placeholder="Write the message your audience will seeâ€¦" /></label>
+        <label>WordPress delivery<select name="publish_mode"><option value="publish">Publish publicly</option><option value="draft">Create WordPress draft</option></select></label>
         <label>Image (optional, max 8 MB)<input name="media" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
         <label>Schedule date and time (optional)<input name="scheduled_for" type="datetime-local" /></label>
         <div className="topbar"><button className="btn secondary" name="intent" value="draft">Save draft</button><button className="btn" name="intent" value="approve">Approve & queue</button></div>
       </form></div>
-      <div className="card"><h2>How publishing works</h2><p className="muted">Only approved Meta posts publish. Images stay private in Supabase Storage and are shared with Meta through a short-lived signed URL.</p><div className="checks">
+      <div className="card"><h2>How publishing works</h2><p className="muted">Approved Meta and WordPress posts are delivered through encrypted connectors. WordPress supports text drafts and public posts; images currently publish to Meta only.</p><div className="checks">
         <div className="check"><span className="badge good">Ready</span><span>Persona-based targeting context</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Draft and approval workflow</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Meta text and image publishing</span></div>
+        <div className="check"><span className="badge good">Ready</span><span>WordPress draft and public publishing</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Background publishing worker</span></div>
       </div></div>
     </div>
     <div className="card section">
       <div className="topbar"><h2>Campaign queue</h2><form action={runDuePostsNow}><button className="btn secondary">Run due posts now</button></form></div>
-      {!queue.length ? <div className="empty">No posts yet. Create your first campaign draft above.</div> : <table><thead><tr><th>Platform</th><th>Target persona</th><th>Content</th><th>Media</th><th>Publish time</th><th>Approval</th><th>Status</th><th></th></tr></thead><tbody>{queue.map(post => <tr key={post.id}>
+      {!queue.length ? <div className="empty">No posts yet. Create your first campaign draft above.</div> : <table><thead><tr><th>Platform</th><th>Target persona</th><th>Content</th><th>Delivery</th><th>Media</th><th>Publish time</th><th>Approval</th><th>Status</th><th></th></tr></thead><tbody>{queue.map(post => <tr key={post.id}>
         <td>{connectorCatalog[post.platform as keyof typeof connectorCatalog]?.name ?? post.platform}</td>
         <td>{post.persona_id ? personaNames.get(post.persona_id) ?? "Archived persona" : "â€”"}</td>
         <td className="truncate">{post.content}</td>
+        <td>{post.platform === "wordpress" ? post.publish_mode : "Publish"}</td>
         <td>{post.media_urls.length ? `${post.media_urls.length} image` : "Text only"}</td>
         <td>{post.scheduled_for ? new Date(post.scheduled_for).toLocaleString() : "Not scheduled"}</td>
         <td><span className={`badge ${post.approval_status === "approved" ? "good" : post.approval_status === "rejected" ? "bad" : ""}`}>{post.approval_status}</span></td>
