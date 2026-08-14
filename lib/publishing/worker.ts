@@ -1,6 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptPageCredentials, publishMetaPagePost } from "@/lib/connectors/meta";
+import { decryptTokens } from "@/lib/connectors/google-search-console";
+import { publishWordPressPost, type StoredWordPressCredentials } from "@/lib/connectors/wordpress";
 
 type QueuePost = {
   id: string;
@@ -9,11 +11,13 @@ type QueuePost = {
   connector_account_id: string | null;
   content: string;
   media_urls: string[];
+  publish_mode: "draft" | "publish";
 };
 
 type ConnectorAccount = {
   id: string;
   encrypted_credentials: unknown;
+  external_account_id: string;
 };
 
 export type PublishRunResult = { processed: number; published: number; failed: number };
@@ -21,7 +25,7 @@ export type PublishRunResult = { processed: number; published: number; failed: n
 async function connectorForPost(post: QueuePost): Promise<ConnectorAccount | null> {
   const supabase = createAdminClient();
   let query = supabase.from("connector_accounts")
-    .select("id,encrypted_credentials")
+    .select("id,encrypted_credentials,external_account_id")
     .eq("owner_id", post.owner_id)
     .eq("provider", post.platform)
     .eq("status", "active");
@@ -34,7 +38,7 @@ async function connectorForPost(post: QueuePost): Promise<ConnectorAccount | nul
 export async function publishDuePosts(limit = 10, ownerId?: string): Promise<PublishRunResult> {
   const supabase = createAdminClient();
   let dueQuery = supabase.from("scheduled_posts")
-    .select("id,owner_id,platform,connector_account_id,content,media_urls")
+    .select("id,owner_id,platform,connector_account_id,content,media_urls,publish_mode")
     .eq("status", "scheduled")
     .eq("approval_status", "approved")
     .lte("scheduled_for", new Date().toISOString())
@@ -56,16 +60,23 @@ export async function publishDuePosts(limit = 10, ownerId?: string): Promise<Pub
     result.processed += 1;
 
     try {
-      if (post.platform !== "meta") throw new Error(`${post.platform} publishing is not enabled yet.`);
       const account = await connectorForPost(post);
-      if (!account) throw new Error("No active Meta Page is connected.");
-      let imageUrl: string | undefined;
-      if (post.media_urls[0]) {
-        const { data: signed, error: signedError } = await supabase.storage.from("campaign-media").createSignedUrl(post.media_urls[0], 600);
-        if (signedError || !signed?.signedUrl) throw signedError || new Error("Could not prepare campaign media.");
-        imageUrl = signed.signedUrl;
+      if (!account) throw new Error(`No active ${post.platform} account is connected.`);
+      let externalPostId: string;
+      if (post.platform === "meta") {
+        let imageUrl: string | undefined;
+        if (post.media_urls[0]) {
+          const { data: signed, error: signedError } = await supabase.storage.from("campaign-media").createSignedUrl(post.media_urls[0], 600);
+          if (signedError || !signed?.signedUrl) throw signedError || new Error("Could not prepare campaign media.");
+          imageUrl = signed.signedUrl;
+        }
+        externalPostId = await publishMetaPagePost(decryptPageCredentials(account.encrypted_credentials), post.content, imageUrl);
+      } else if (post.platform === "wordpress") {
+        if (post.media_urls.length) throw new Error("WordPress image publishing is not enabled yet. Remove the image and retry.");
+        externalPostId = await publishWordPressPost(account.external_account_id, decryptTokens<StoredWordPressCredentials>(account.encrypted_credentials), post.content, post.publish_mode);
+      } else {
+        throw new Error(`${post.platform} publishing is not enabled yet.`);
       }
-      const externalPostId = await publishMetaPagePost(decryptPageCredentials(account.encrypted_credentials), post.content, imageUrl);
       const { error: updateError } = await supabase.from("scheduled_posts").update({
         connector_account_id: account.id,
         status: "published",

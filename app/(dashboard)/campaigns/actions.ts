@@ -16,6 +16,7 @@ export async function createScheduledPost(form: FormData) {
   const content = String(form.get("content") || "").trim();
   const scheduledFor = String(form.get("scheduled_for") || "");
   const intent = String(form.get("intent") || "draft");
+  const publishMode = String(form.get("publish_mode") || "publish") === "draft" ? "draft" : "publish";
   const requestedPersonaId = String(form.get("persona_id") || "");
   if (!publishingPlatforms.has(platform) || !content) return;
 
@@ -45,6 +46,7 @@ export async function createScheduledPost(form: FormData) {
     connector_account_id: account?.id ?? null,
     persona_id: personaId,
     platform,
+    publish_mode: publishMode,
     content,
     media_urls: mediaUrls,
     scheduled_for: intent === "approve" ? (scheduledFor ? new Date(scheduledFor).toISOString() : new Date().toISOString()) : null,
