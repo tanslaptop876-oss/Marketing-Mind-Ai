@@ -4,6 +4,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export type WordPressCredentials = { username: string; applicationPassword: string };
 export type WordPressComTokens = { access_token: string; blog_id?: string; blog_url?: string; token_type?: string };
+export type StoredWordPressCredentials = WordPressComTokens & { mode?: "wordpress.com"; siteUrl?: string; username?: string; applicationPassword?: string };
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
 const stateSecret = () => {
@@ -75,5 +76,20 @@ export async function validateWordPressConnection(siteUrl: string, credentials: 
   const data = await response.json().catch(() => ({})) as { id?: number; name?: string; message?: string };
   if (!response.ok || !data.id) throw new Error(data.message || "WordPress credentials could not be verified.");
   return { userId: String(data.id), displayName: data.name || credentials.username };
+}
+
+export async function publishWordPressPost(siteIdOrUrl: string, credentials: StoredWordPressCredentials, content: string, status: "draft" | "publish") {
+  const title = content.split(/\r?\n/).find(line => line.trim())?.trim().slice(0, 120) || "MarketingMind AI post";
+  const isWordPressCom = credentials.mode === "wordpress.com" || Boolean(credentials.access_token && credentials.blog_id);
+  const endpoint = isWordPressCom
+    ? `https://public-api.wordpress.com/wp/v2/sites/${encodeURIComponent(credentials.blog_id || siteIdOrUrl)}/posts`
+    : `${normalizeWordPressUrl(siteIdOrUrl)}/wp-json/wp/v2/posts`;
+  const authorization = isWordPressCom
+    ? `Bearer ${credentials.access_token}`
+    : `Basic ${Buffer.from(`${credentials.username}:${credentials.applicationPassword}`).toString("base64")}`;
+  const response = await fetch(endpoint, { method: "POST", headers: { authorization, "content-type": "application/json" }, body: JSON.stringify({ title, content, status }), cache: "no-store" });
+  const data = await response.json().catch(() => ({})) as { id?: number; message?: string; code?: string };
+  if (!response.ok || !data.id) throw new Error(data.message || data.code || "WordPress publishing failed.");
+  return String(data.id);
 }
 
