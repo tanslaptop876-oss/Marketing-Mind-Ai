@@ -37,11 +37,11 @@ export default async function Campaigns() {
         <label>Schedule date and time (optional)<input name="scheduled_for" type="datetime-local" /></label>
         <div className="topbar"><button className="btn secondary" name="intent" value="draft">Save draft</button><button className="btn" name="intent" value="approve">Approve & queue</button></div>
       </form></div>
-      <div className="card"><h2>How publishing works</h2><p className="muted">Approved Meta and WordPress posts are delivered through encrypted connectors. WordPress supports text drafts and public posts; images currently publish to Meta only.</p><div className="checks">
+      <div className="card"><h2>How publishing works</h2><p className="muted">Approved Meta and WordPress posts are delivered through encrypted connectors. WordPress supports text or featured-image drafts and public posts.</p><div className="checks">
         <div className="check"><span className="badge good">Ready</span><span>Persona-based targeting context</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Draft and approval workflow</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Meta text and image publishing</span></div>
-        <div className="check"><span className="badge good">Ready</span><span>WordPress draft and public publishing</span></div>
+        <div className="check"><span className="badge good">Ready</span><span>WordPress text, featured image, draft and public publishing</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Background publishing worker</span></div>
       </div></div>
     </div>
