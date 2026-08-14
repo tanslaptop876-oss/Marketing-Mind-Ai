@@ -1,0 +1,3 @@
+import {NextResponse} from "next/server";import {createClient} from "@/lib/supabase/server";import {createGbpState,gbpAuthorizationUrl,gbpConfigured} from "@/lib/connectors/google-business-profile";
+export const runtime="nodejs";export async function GET(request:Request){const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user)return NextResponse.redirect(new URL("/login",request.url));if(!gbpConfigured())return NextResponse.redirect(new URL("/connectors?error=Google%20Business%20Profile%20OAuth%20is%20not%20configured",request.url));return NextResponse.redirect(gbpAuthorizationUrl(createGbpState(user.id)))}
+

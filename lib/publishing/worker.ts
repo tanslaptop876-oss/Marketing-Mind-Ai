@@ -1,8 +1,9 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptPageCredentials, publishMetaPagePost } from "@/lib/connectors/meta";
-import { decryptTokens } from "@/lib/connectors/google-search-console";
+import { decryptTokens, validAccessToken, type GoogleTokens } from "@/lib/connectors/google-search-console";
 import { publishWordPressPost, uploadWordPressMedia, type StoredWordPressCredentials } from "@/lib/connectors/wordpress";
+import { publishGbpPost } from "@/lib/connectors/google-business-profile";
 
 type QueuePost = {
   id: string;
@@ -83,6 +84,11 @@ export async function publishDuePosts(limit = 10, ownerId?: string): Promise<Pub
           featuredMedia = await uploadWordPressMedia(account.external_account_id, credentials, await mediaResponse.arrayBuffer(), mimeType, post.media_urls[0].split("/").pop() || "campaign-image.jpg");
         }
         externalPostId = await publishWordPressPost(account.external_account_id, credentials, post.content, post.publish_mode, featuredMedia);
+      } else if (post.platform === "google_business_profile") {
+        const tokens = await validAccessToken(decryptTokens<GoogleTokens>(account.encrypted_credentials));
+        let imageUrl: string | undefined;
+        if (post.media_urls[0]) { const {data:signed,error:signedError}=await supabase.storage.from("campaign-media").createSignedUrl(post.media_urls[0],600);if(signedError||!signed?.signedUrl)throw signedError||new Error("Could not prepare campaign media.");imageUrl=signed.signedUrl; }
+        externalPostId = await publishGbpPost(tokens.access_token, account.external_account_id, post.content, imageUrl);
       } else {
         throw new Error(`${post.platform} publishing is not enabled yet.`);
       }
