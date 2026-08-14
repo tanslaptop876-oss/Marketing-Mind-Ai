@@ -4,29 +4,39 @@ import { approveScheduledPost, createScheduledPost, deleteScheduledPost, rejectS
 
 const platforms = ["meta", "google_business_profile", "wordpress", "youtube", "linkedin", "x"] as const;
 type AccountRow = { provider: string };
-type PostRow = { id: string; platform: string; content: string; scheduled_for: string | null; status: string; approval_status: string; media_urls: string[]; connector_account_id: string | null; error_message: string | null; created_at: string };
+type PersonaOption = { id: string; name: string };
+type PostRow = {
+  id: string; platform: string; content: string; scheduled_for: string | null; status: string;
+  approval_status: string; media_urls: string[]; connector_account_id: string | null;
+  persona_id: string | null;
+  error_message: string | null; created_at: string;
+};
 
 export default async function Campaigns() {
   const supabase = await createClient();
   const { data: posts = [] } = await supabase.from("scheduled_posts")
-    .select("id,platform,content,scheduled_for,status,approval_status,media_urls,connector_account_id,error_message,created_at")
+    .select("id,platform,content,scheduled_for,status,approval_status,media_urls,connector_account_id,persona_id,error_message,created_at")
     .order("created_at", { ascending: false });
   const { data: accounts = [] } = await supabase.from("connector_accounts").select("provider").eq("status", "active");
+  const { data: personas = [] } = await supabase.from("buyer_personas").select("id,name").eq("status", "active").order("name");
   const connected = new Set(((accounts ?? []) as AccountRow[]).map(account => account.provider));
+  const personaNames = new Map(((personas ?? []) as PersonaOption[]).map(persona => [persona.id, persona.name]));
   const queue = (posts ?? []) as PostRow[];
 
   return <>
     <h1>Publishing & scheduling</h1>
-    <p className="muted">Draft, approve, and schedule content for connected channels.</p>
+    <p className="muted">Draft, target, approve, and schedule content for connected channels.</p>
     <div className="grid two section">
       <div className="card"><h2>Create post</h2><form action={createScheduledPost} className="form">
         <label>Platform<select name="platform" required>{platforms.map(platform => <option key={platform} value={platform}>{connectorCatalog[platform].name}{connected.has(platform) ? " Â· connected" : " Â· draft only"}</option>)}</select></label>
+        <label>Target persona<select name="persona_id"><option value="">No persona selected</option>{((personas ?? []) as PersonaOption[]).map(persona => <option key={persona.id} value={persona.id}>{persona.name}</option>)}</select></label>
         <label>Post content<textarea name="content" rows={7} required placeholder="Write the message your audience will seeâ€¦" /></label>
         <label>Image (optional, max 8 MB)<input name="media" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
         <label>Schedule date and time (optional)<input name="scheduled_for" type="datetime-local" /></label>
         <div className="topbar"><button className="btn secondary" name="intent" value="draft">Save draft</button><button className="btn" name="intent" value="approve">Approve & queue</button></div>
       </form></div>
       <div className="card"><h2>How publishing works</h2><p className="muted">Only approved Meta posts publish. Images stay private in Supabase Storage and are shared with Meta through a short-lived signed URL.</p><div className="checks">
+        <div className="check"><span className="badge good">Ready</span><span>Persona-based targeting context</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Draft and approval workflow</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Meta text and image publishing</span></div>
         <div className="check"><span className="badge good">Ready</span><span>Background publishing worker</span></div>
@@ -34,8 +44,9 @@ export default async function Campaigns() {
     </div>
     <div className="card section">
       <div className="topbar"><h2>Campaign queue</h2><form action={runDuePostsNow}><button className="btn secondary">Run due posts now</button></form></div>
-      {!queue.length ? <div className="empty">No posts yet. Create your first campaign draft above.</div> : <table><thead><tr><th>Platform</th><th>Content</th><th>Media</th><th>Publish time</th><th>Approval</th><th>Status</th><th></th></tr></thead><tbody>{queue.map(post => <tr key={post.id}>
+      {!queue.length ? <div className="empty">No posts yet. Create your first campaign draft above.</div> : <table><thead><tr><th>Platform</th><th>Target persona</th><th>Content</th><th>Media</th><th>Publish time</th><th>Approval</th><th>Status</th><th></th></tr></thead><tbody>{queue.map(post => <tr key={post.id}>
         <td>{connectorCatalog[post.platform as keyof typeof connectorCatalog]?.name ?? post.platform}</td>
+        <td>{post.persona_id ? personaNames.get(post.persona_id) ?? "Archived persona" : "â€”"}</td>
         <td className="truncate">{post.content}</td>
         <td>{post.media_urls.length ? `${post.media_urls.length} image` : "Text only"}</td>
         <td>{post.scheduled_for ? new Date(post.scheduled_for).toLocaleString() : "Not scheduled"}</td>
