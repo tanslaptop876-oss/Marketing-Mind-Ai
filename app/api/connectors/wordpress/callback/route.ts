@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { encryptTokens } from "@/lib/connectors/google-search-console";
-import { exchangeWordPressCode, listWordPressComSites, verifyWordPressState } from "@/lib/connectors/wordpress";
+import { exchangeWordPressCode, verifyWordPressState } from "@/lib/connectors/wordpress";
 
 export const runtime = "nodejs";
 const go = (request: NextRequest, path: string) => NextResponse.redirect(new URL(path, request.url));
@@ -18,14 +18,13 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || user.id !== expected.userId) throw new Error("Your login session changed. Please reconnect.");
     const tokens = await exchangeWordPressCode(code);
-    const sites = await listWordPressComSites(tokens.access_token);
     const expectedHost = new URL(expected.siteUrl).hostname.toLowerCase();
-    const site = sites.find(item => {
-      try { return new URL(item.URL).hostname.toLowerCase() === expectedHost; } catch { return false; }
-    });
-    if (!site) throw new Error("The authorized account does not manage this WordPress.com site.");
+    if (!tokens.blog_id || !tokens.blog_url) throw new Error("WordPress.com did not return an authorized site.");
+    let authorizedHost = "";
+    try { authorizedHost = new URL(tokens.blog_url).hostname.toLowerCase(); } catch { throw new Error("WordPress.com returned an invalid site URL."); }
+    if (authorizedHost !== expectedHost) throw new Error("WordPress.com authorized a different site. Please reconnect the requested site.");
     await supabase.from("connector_accounts").delete().eq("provider", "wordpress");
-    const { error } = await supabase.from("connector_accounts").insert({ owner_id: user.id, provider: "wordpress", external_account_id: String(site.ID), display_name: site.name || site.URL, status: "active", encrypted_credentials: encryptTokens({ mode: "wordpress.com", siteUrl: site.URL, ...tokens }) });
+    const { error } = await supabase.from("connector_accounts").insert({ owner_id: user.id, provider: "wordpress", external_account_id: String(tokens.blog_id), display_name: authorizedHost, status: "active", encrypted_credentials: encryptTokens({ mode: "wordpress.com", siteUrl: tokens.blog_url, ...tokens }) });
     if (error) throw error;
     return go(request, "/connectors?message=WordPress.com%20connected");
   } catch (error) {
