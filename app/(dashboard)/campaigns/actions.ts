@@ -16,7 +16,15 @@ export async function createScheduledPost(form: FormData) {
   const content = String(form.get("content") || "").trim();
   const scheduledFor = String(form.get("scheduled_for") || "");
   const intent = String(form.get("intent") || "draft");
+  const requestedPersonaId = String(form.get("persona_id") || "");
   if (!publishingPlatforms.has(platform) || !content) return;
+
+  let personaId: string | null = null;
+  if (requestedPersonaId) {
+    const { data: persona } = await supabase.from("buyer_personas")
+      .select("id").eq("id", requestedPersonaId).eq("status", "active").maybeSingle();
+    personaId = persona?.id ?? null;
+  }
 
   const media = form.get("media");
   const mediaUrls: string[] = [];
@@ -35,6 +43,7 @@ export async function createScheduledPost(form: FormData) {
   await supabase.from("scheduled_posts").insert({
     owner_id: user.id,
     connector_account_id: account?.id ?? null,
+    persona_id: personaId,
     platform,
     content,
     media_urls: mediaUrls,
